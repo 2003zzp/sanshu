@@ -486,27 +486,44 @@ const goToChart = (s) => {
 }
 
 const connectWS = () => {
-  // 连接所有币种
+  // 1. 生成所有币种的 stream 路径
   const streams = coinConfig.map(c => c.pair + '@ticker').join('/')
-  ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams}`)
+
+  // 2. 将原有的币安域名替换为你自己的服务器域名，并加上 Nginx 匹配前缀 /binance-ws/
+  // 注意：不再需要 :9443 端口，因为 Nginx 已经在 443(HTTPS) 端口帮你转发了
+  const wsUrl = `wss://www.openupbtc.com/binance-ws/stream?streams=${streams}`
+
+  ws = new WebSocket(wsUrl)
+
   ws.onmessage = (e) => {
     try {
       const d = JSON.parse(e.data).data
       if (!d) return
+      // 这里的逻辑保持不变
       const c = coinList.value.find(x => x.symbol === d.s.replace('USDT', ''))
       if (c) {
         if (d.c) c.price = parseFloat(d.c)
         if (d.P) c.change = parseFloat(d.P)
       }
-    } catch {}
+    } catch (err) {
+      console.error("解析WS数据失败", err)
+    }
   }
-  ws.onclose = () => setTimeout(connectWS, 3000)
+
+  ws.onerror = (err) => {
+    console.error("WS连接发生错误:", err)
+  }
+
+  ws.onclose = () => {
+    console.log("WS连接已断开，3秒后重连...")
+    setTimeout(connectWS, 3000)
+  }
 }
 
 const fetchChange = async () => {
   try {
     const promises = coinConfig.map(async (c) => {
-      const res = await fetch(`/binance-api/api/v3/ticker/24hr?symbol=${c.pair.toUpperCase()}`)
+      const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${c.pair.toUpperCase()}`)
       const d = await res.json()
       return { symbol: c.symbol, price: d.lastPrice ? parseFloat(d.lastPrice) : 0, change: d.priceChangePercent ? parseFloat(d.priceChangePercent) : 0 }
     })
