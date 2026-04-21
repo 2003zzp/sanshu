@@ -506,7 +506,7 @@ const connectWS = () => {
 const fetchChange = async () => {
   try {
     const promises = coinConfig.map(async (c) => {
-      const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${c.pair.toUpperCase()}`)
+      const res = await fetch(`/binance-api/api/v3/ticker/24hr?symbol=${c.pair.toUpperCase()}`)
       const d = await res.json()
       return { symbol: c.symbol, price: d.lastPrice ? parseFloat(d.lastPrice) : 0, change: d.priceChangePercent ? parseFloat(d.priceChangePercent) : 0 }
     })
